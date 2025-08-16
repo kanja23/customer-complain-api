@@ -18,7 +18,9 @@ def health():
 def get_jobs():
     jobs = [
         {"id": 1, "region": "Malava", "status": "Pending"},
-        {"id": 2, "region": "Lurambi", "status": "Completed"},
+        {"id": 2, "region": "Khayega", "status": "Pending"},
+        {"id": 3, "region": "Musoli", "status": "Completed"},
+        {"id": 4, "region": "Lurambi", "status": "Completed"},
     ]
     return jsonify(jobs)
 
