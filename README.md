@@ -40,7 +40,3 @@ DELETE /api/complaints/:id   → Remove a complaint
 4. Export reports from the **Reports** tab.
 
 ---
-
-## 📖 License
-
-MIT License – Free to use and modify.
