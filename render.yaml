@@ -7,3 +7,5 @@ services:
     envVars:
       - key: CORS_ORIGINS
         value: https://kkcomplainlog.netlify.app
+
+        
