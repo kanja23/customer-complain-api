@@ -1,34 +1,64 @@
-import os
-from flask import Flask, jsonify, request
-from flask_cors import CORS
+from flask import Flask, request, jsonify
+import json
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Allow only your Netlify domain in production
-allowed_origins = os.getenv("CORS_ORIGINS", "*").split(",")
-CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
+# Load staff users
+with open("users.json") as f:
+    users = json.load(f)
 
-# Health check
-@app.route("/api/health", methods=["GET"])
-def health():
-    return jsonify({"status": "ok"})
+complaints = []
 
-# Example GET endpoint
-@app.route("/api/jobs", methods=["GET"])
-def get_jobs():
-    jobs = [
-        {"id": 1, "region": "Malava", "status": "Pending"},
-        {"id": 2, "region": "Khayega", "status": "Pending"},
-        {"id": 3, "region": "Musoli", "status": "Completed"},
-        {"id": 4, "region": "Lurambi", "status": "Completed"},
-    ]
-    return jsonify(jobs)
+# --- LOGIN ---
+@app.route("/api/login", methods=["POST"])
+def login():
+    data = request.json
+    staff_no = data.get("staff_no")
+    password = data.get("password")
 
-# Example POST endpoint
-@app.route("/api/jobs", methods=["POST"])
-def create_job():
-    data = request.get_json()
-    return jsonify({"ok": True, "job": data}), 201
+    user = next((u for u in users if u["staff_no"] == staff_no), None)
+
+    if user and password == staff_no[:4]:
+        return jsonify({"message": "Login successful", "user": user}), 200
+    return jsonify({"error": "Invalid credentials"}), 401
+
+
+# --- COMPLAINT LOG ---
+@app.route("/api/complaints", methods=["GET", "POST"])
+def complaints_api():
+    global complaints
+
+    # Auto check for escalation
+    now = datetime.now()
+    for c in complaints:
+        if c["status"] == "Pending":
+            logged_time = datetime.fromisoformat(c["date_logged"])
+            if now - logged_time > timedelta(days=3):
+                c["status"] = "Escalated"
+
+    if request.method == "GET":
+        return jsonify(complaints)
+
+    if request.method == "POST":
+        complaint = request.json
+        complaint["id"] = len(complaints) + 1
+        complaint["date_logged"] = datetime.now().isoformat()
+        complaint["status"] = "Pending"
+        complaints.append(complaint)
+        return jsonify({"message": "Complaint added"}), 201
+
+
+# --- MARK AS RESOLVED ---
+@app.route("/api/complaints/<int:cid>/resolve", methods=["POST"])
+def resolve_complaint(cid):
+    global complaints
+    for c in complaints:
+        if c["id"] == cid:
+            c["status"] = "Resolved"
+            return jsonify({"message": f"Complaint {cid} marked as resolved"}), 200
+    return jsonify({"error": "Complaint not found"}), 404
+
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host="0.0.0.0", port=5000)
